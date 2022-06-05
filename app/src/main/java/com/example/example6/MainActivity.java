@@ -1,5 +1,7 @@
 package com.example.example6;
 
+import static java.lang.System.exit;
+
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -9,7 +11,6 @@ import android.graphics.Rect;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.OvalShape;
 import android.os.Bundle;
-import android.provider.Telephony;
 import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -22,6 +23,8 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import org.apache.commons.math3.analysis.function.Gaussian;
 
 /**
  * Smart Phone Sensing Example 6. Object movement and interaction on canvas.
@@ -53,7 +56,9 @@ public class MainActivity extends Activity implements OnClickListener {
 
     private List<Rectangle> building = new ArrayList<>();
 
-    private final int NUM_PART = 100;
+    private final int NUM_PART = 5000;
+
+    private final double H = 5;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -180,8 +185,8 @@ public class MainActivity extends Activity implements OnClickListener {
                 Rectangle room = building.get(i);
                 if (p.getX() > room.getTopleftX() && p.getX() < room.getTopleftX() + room.getWidth()) {
                     if (p.getY() > room.getTopleftY() && p.getY() < room.getTopleftY() + room.getLength()) {
-                        System.out.println("particle added: X " + p.getX() + " and Y " + p.getY());
-                        System.out.println("found in room " + i + ", coordinates " + room.getTopleftX() + ", " + room.getTopleftY());
+//                        System.out.println("particle added: X " + p.getX() + " and Y " + p.getY());
+//                        System.out.println("found in room " + i + ", coordinates " + room.getTopleftX() + ", " + room.getTopleftY());
                         return true;
                     }
                 }
@@ -202,9 +207,9 @@ public class MainActivity extends Activity implements OnClickListener {
 
     private void updateParticles(double distance, double direction) {
         for (Particle p: particles) {
-            System.out.println("Current X and Y: " + p.getX() + ", " + p.getY());
+//            System.out.println("Current X and Y: " + p.getX() + ", " + p.getY());
             p.updateDistance(distance, direction);
-            System.out.println("New X and Y: " + p.getX() + ", " + p.getY());
+//            System.out.println("New X and Y: " + p.getX() + ", " + p.getY());
         }
         List<Particle> toremove = new ArrayList<>();
         for (int i = 0; i < particles.size(); i++) {
@@ -217,9 +222,16 @@ public class MainActivity extends Activity implements OnClickListener {
             particles.remove(p);
         }
 
+        System.out.println("Amount of particles still left is: " + particles.size());
+        if (particles.size() == 0) {
+            System.out.println("Empty particle set");
+            exit(0);
+        }
         //TODO: add replacement for samples
         double[] cdf = cdfFromWeights();
-        while (particles.size() < NUM_PART) {
+        System.out.println("Cdf function now: " + Arrays.toString(cdf));
+        int counter = 0;
+        while (particles.size() < NUM_PART && counter < 10) {
             double rand = Math.random();
             int kernel = 0;
             for (int i = 0; i < cdf.length; i++) {
@@ -228,18 +240,40 @@ public class MainActivity extends Activity implements OnClickListener {
                     break;
                 }
             }
+            System.out.println("Found fitting kernel value: " + kernel);
+
 
             //apply Gaussian to set point nearby, using h as std dev and kernel X and Y as mean
             //idea used from: https://stats.stackexchange.com/questions/43674/simple-sampling-method-for-a-kernel-density-estimator
-            
+            double minX = Math.random();
+            double minY = Math.random();
 
+            System.out.println("sample to check from: " + particles.get(kernel).getX() + ", "+ particles.get(kernel).getY());
+            double newX = particles.get(kernel).getX() + Math.random() * H;
+            double newY = particles.get(kernel).getY() + Math.random() * H;
+            if (minX < 0.5) {
+                newX = particles.get(kernel).getX() - Math.random() * H;
+            }
+            if (minY < 0.5) {
+                newY = particles.get(kernel).getY() - Math.random() * H;
+            }
+
+            System.out.println("new particle values X " + newX + ", and Y " + newY);
+
+            Particle newP = new Particle(newX, newY, 1, Math.random()*360);
+            if (validParticle(newP)) {
+                particles.add(newP);
+                System.out.println("new Particle added");
+                counter = 0;
+            }
+            counter++;
         }
 
 
         System.out.println("new particle size is now: " + particles.size());
     }
 
-    public double[] cdfFromWeights(double ) {
+    public double[] cdfFromWeights() {
         float totalDist = 0;
         for (Particle p : particles) {
             totalDist += p.getDistance();
@@ -362,7 +396,7 @@ public class MainActivity extends Activity implements OnClickListener {
         drawable.draw(canvas);
         for (Particle p : particles) {
             ShapeDrawable shape = new ShapeDrawable(new OvalShape());
-            shape.setBounds((int)p.getX()-10, (int) p.getY()-10, (int) p.getX()+10, (int) p.getY()+10);
+            shape.setBounds((int)p.getX()-5, (int) p.getY()-5, (int) p.getX()+5, (int) p.getY()+5);
             shape.getPaint().setColor(Color.RED);
             if (p.getY() < 300) {
                 shape.getPaint().setColor(Color.GREEN);
