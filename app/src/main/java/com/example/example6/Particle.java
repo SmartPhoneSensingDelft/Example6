@@ -24,6 +24,8 @@ public class Particle {
         return this.y;
     }
 
+    public double getDistance() { return this.distance;}
+
     public void updateDistance(double distance, double rotation) {
         //TODO: add distance covered and the rotation of the particle, and update X and Y
         this.distance += distance;

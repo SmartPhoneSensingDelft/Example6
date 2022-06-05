@@ -20,6 +20,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -192,7 +193,7 @@ public class MainActivity extends Activity implements OnClickListener {
     private void generateParticles() {
         System.out.println("Generating particles");
         while(particles.size() < NUM_PART) {
-            Particle part = new Particle(Math.random()*1080, Math.random()*2000, 0, Math.random()* 360);
+            Particle part = new Particle(Math.random()*1080, Math.random()*2000, 1, Math.random()* 360);
             if (validParticle(part)) {
                 particles.add(part);
             }
@@ -217,11 +218,46 @@ public class MainActivity extends Activity implements OnClickListener {
         }
 
         //TODO: add replacement for samples
+        double[] cdf = cdfFromWeights();
+        while (particles.size() < NUM_PART) {
+            double rand = Math.random();
+            int kernel = 0;
+            for (int i = 0; i < cdf.length; i++) {
+                if (cdf[i] > rand) {
+                    kernel = i;
+                    break;
+                }
+            }
 
-        //TODO: sub 1 compute a pdf based on all alive particles for both X and Y direction
-        
-        //TODO: sub 2 revive samples based on these pdfs,
+            //apply Gaussian to set point nearby, using h as std dev and kernel X and Y as mean
+            //idea used from: https://stats.stackexchange.com/questions/43674/simple-sampling-method-for-a-kernel-density-estimator
+            
 
+        }
+
+
+        System.out.println("new particle size is now: " + particles.size());
+    }
+
+    public double[] cdfFromWeights(double ) {
+        float totalDist = 0;
+        for (Particle p : particles) {
+            totalDist += p.getDistance();
+        }
+        double[] x_coord = new double[particles.size()];
+        double[] y_coord = new double[particles.size()];
+        double[] weights = new double[particles.size()];
+        for (int i = 0; i < particles.size(); i++) {
+            x_coord[i] = particles.get(i).getX();
+            y_coord[i] = particles.get(i).getY();
+            weights[i] = particles.get(i).getDistance()/totalDist;
+        }
+        double[] cdf = new double[particles.size()];
+        cdf[0] = weights[0];
+        for (int i = 1; i < weights.length; i++) {
+            cdf[i] = cdf[i-1] + weights[i];
+        }
+        return cdf;
     }
 
     @Override
