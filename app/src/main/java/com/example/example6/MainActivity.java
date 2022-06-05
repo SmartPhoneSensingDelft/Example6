@@ -58,7 +58,7 @@ public class MainActivity extends Activity implements OnClickListener {
 
     private final int NUM_PART = 5000;
 
-    private final double H = 5;
+    private final double H = 2;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -225,13 +225,11 @@ public class MainActivity extends Activity implements OnClickListener {
         System.out.println("Amount of particles still left is: " + particles.size());
         if (particles.size() == 0) {
             System.out.println("Empty particle set");
-            exit(0);
         }
         //TODO: add replacement for samples
         double[] cdf = cdfFromWeights();
         System.out.println("Cdf function now: " + Arrays.toString(cdf));
-        int counter = 0;
-        while (particles.size() < NUM_PART && counter < 10) {
+        while (particles.size() < NUM_PART) {
             double rand = Math.random();
             int kernel = 0;
             for (int i = 0; i < cdf.length; i++) {
@@ -264,9 +262,7 @@ public class MainActivity extends Activity implements OnClickListener {
             if (validParticle(newP)) {
                 particles.add(newP);
                 System.out.println("new Particle added");
-                counter = 0;
             }
-            counter++;
         }
 
 
