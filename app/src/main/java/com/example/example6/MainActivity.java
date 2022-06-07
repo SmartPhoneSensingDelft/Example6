@@ -50,7 +50,7 @@ public class MainActivity extends Activity implements OnClickListener, SensorEve
     private final double H = 2;
 
     private float ROTATION_OFFSET = 0;      // the buildings standard rotational offset
-    private int steps = 0;
+    private int TOTALSTEPS = 0;
     private final float STEP_SIZE = 0.8f;
     private final int PPM = 38;         // Pixels per meter
     private boolean INITROUND = true;
@@ -314,6 +314,7 @@ public class MainActivity extends Activity implements OnClickListener, SensorEve
     public void onSensorChanged(SensorEvent event) {
         float distance = 0;
         float direction = 0;
+        int currSteps = 0;
 
         switch (event.sensor.getType()) {
             case Sensor.TYPE_ROTATION_VECTOR:
@@ -326,14 +327,15 @@ public class MainActivity extends Activity implements OnClickListener, SensorEve
                 direction = (float)Math.toDegrees(OrientationM[0]) - ROTATION_OFFSET;
                 break;
             case Sensor.TYPE_STEP_COUNTER:
-                steps = ((int) event.values[0]) - steps;
+                currSteps = ((int) event.values[0]) - TOTALSTEPS;
+                TOTALSTEPS = (int) event.values[0];
                 if (INITROUND) {
                     distance = 0;
                     INITROUND = false;
                 } else {
-                    distance = steps * STEP_SIZE * PPM;
+                    distance = currSteps * STEP_SIZE * PPM;
 
-                    System.out.println(steps + "steps");
+                    System.out.println(currSteps + "steps");
                 }
                 break;
         }
