@@ -3,6 +3,7 @@ package com.example.example6;
 import static java.lang.System.exit;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -10,6 +11,10 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.OvalShape;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.view.Display;
 import android.view.Menu;
@@ -29,56 +34,35 @@ import org.apache.commons.math3.analysis.function.Gaussian;
 /**
  * Smart Phone Sensing Example 6. Object movement and interaction on canvas.
  */
-public class MainActivity extends Activity implements OnClickListener {
+public class MainActivity extends Activity implements OnClickListener, SensorEventListener {
 
-    /**
-     * The buttons.
-     */
-    private Button up, left, right, down;
-    /**
-     * The text view.
-     */
-    private TextView textView;
-    /**
-     * The shape.
-     */
+    private SensorManager sensorManager;
+    private Sensor stepSensor, directionSensor;
+
     private ShapeDrawable drawable;
-    /**
-     * The canvas.
-     */
     private Canvas canvas;
-    /**
-     * The walls.
-     */
     private List<ShapeDrawable> walls;
 
     private List<Particle> particles = new ArrayList<>();
-
     private List<Rectangle> building = new ArrayList<>();
 
     private final int NUM_PART = 5000;
-
     private final double H = 2;
+
+    private float ROTATION_OFFSET = 0;      // the buildings standard rotational offset
+    private int steps = 0;
+    private final float STEP_SIZE = 0.8f;
+    private final int PPM = 38;         // Pixels per meter
+    private boolean INITROUND = true;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // set the buttons
-        up = (Button) findViewById(R.id.button1);
-        left = (Button) findViewById(R.id.button2);
-        right = (Button) findViewById(R.id.button3);
-        down = (Button) findViewById(R.id.button4);
-
-        // set the text view
-        textView = (TextView) findViewById(R.id.textView1);
-
-        // set listeners
-        up.setOnClickListener(this);
-        down.setOnClickListener(this);
-        left.setOnClickListener(this);
-        right.setOnClickListener(this);
+        // initialize sensormanager
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 
         // get the screen dimensions
         Display display = getWindowManager().getDefaultDisplay();
@@ -90,10 +74,8 @@ public class MainActivity extends Activity implements OnClickListener {
 
         // create a drawable object
         drawBuilding(width,height);
-//
-//
-//
-//        // create a canvas
+
+        // create a canvas
         ImageView canvasView = (ImageView) findViewById(R.id.canvas);
         Bitmap blankBitmap = Bitmap.createBitmap(width,height, Bitmap.Config.ARGB_8888);
         canvas = new Canvas(blankBitmap);
@@ -113,10 +95,35 @@ public class MainActivity extends Activity implements OnClickListener {
             System.out.println("Drawing a wall");
             wall.draw(canvas);
         }
-//
-//
+    }
 
+    @Override
+    public void onClick(View view) {
+        // Do nothing.
+    }
 
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // Do nothing.
+    }
+
+    // onResume() registers the sensors for listening the events
+    protected void onResume() {
+        super.onResume();
+
+        // Set the sensors
+        stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER);
+        directionSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+
+        sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(this, directionSensor, SensorManager.SENSOR_DELAY_NORMAL);
+    }
+
+    // onPause() unregisters the sensors for stop listening the events
+    protected void onPause() {
+        super.onPause();
+        sensorManager.unregisterListener(this, stepSensor);
+        sensorManager.unregisterListener(this, directionSensor);
     }
 
     //method to hardcode all rooms within frame
@@ -214,12 +221,8 @@ public class MainActivity extends Activity implements OnClickListener {
         List<Particle> toremove = new ArrayList<>();
         for (int i = 0; i < particles.size(); i++) {
             if (!validParticle(particles.get(i))) {
-                toremove.add(particles.get(i));
+                particles.remove(i);
             }
-        }
-        for (Particle p:
-             toremove) {
-            particles.remove(p);
         }
 
         System.out.println("Amount of particles still left is: " + particles.size());
@@ -239,7 +242,6 @@ public class MainActivity extends Activity implements OnClickListener {
                 }
             }
             System.out.println("Found fitting kernel value: " + kernel);
-
 
             //apply Gaussian to set point nearby, using h as std dev and kernel X and Y as mean
             //idea used from: https://stats.stackexchange.com/questions/43674/simple-sampling-method-for-a-kernel-density-estimator
@@ -264,7 +266,6 @@ public class MainActivity extends Activity implements OnClickListener {
                 System.out.println("new Particle added");
             }
         }
-
 
         System.out.println("new particle size is now: " + particles.size());
     }
@@ -310,63 +311,34 @@ public class MainActivity extends Activity implements OnClickListener {
     }
 
     @Override
-    public void onClick(View v) {
-        // This happens when you click any of the four buttons.
-        // For each of the buttons, when it is clicked we change:
-        // - The text in the center of the buttons
-        // - The margins
-        // - The text that shows the margin
-        double direction = 0;
-        double distance = 0;
-        switch (v.getId()) {
-            // UP BUTTON
-            case R.id.button1: {
-                Toast.makeText(getApplication(), "UP", Toast.LENGTH_SHORT).show();
-                Rect r = drawable.getBounds();
-                drawable.setBounds(r.left,r.top-20,r.right,r.bottom-20);
-                textView.setText("\n\tMove Up" + "\n\tTop Margin = "
-                        + drawable.getBounds().top);
-                direction = 0;
-                distance = 38;
+    public void onSensorChanged(SensorEvent event) {
+        float distance = 0;
+        float direction = 0;
+
+        switch (event.sensor.getType()) {
+            case Sensor.TYPE_ROTATION_VECTOR:
+                float RotationM[] = new float[9];
+                float OrientationM[] = new float[3];        // Gives x, y, and z rotation
+                SensorManager.getRotationMatrixFromVector(RotationM, event.values);
+                SensorManager.getOrientation(RotationM, OrientationM);
+
+                System.out.println("angles = " + Math.toDegrees(OrientationM[0]) + "," + Math.toDegrees(OrientationM[1]) + "," + Math.toDegrees(OrientationM[2]));
+                direction = (float)Math.toDegrees(OrientationM[0]) - ROTATION_OFFSET;
                 break;
-            }
-            // DOWN BUTTON
-            case R.id.button4: {
-                Toast.makeText(getApplication(), "DOWN", Toast.LENGTH_SHORT).show();
-                Rect r = drawable.getBounds();
-                drawable.setBounds(r.left,r.top+20,r.right,r.bottom+20);
-                textView.setText("\n\tMove Down" + "\n\tTop Margin = "
-                        + drawable.getBounds().top);
-                direction = 180;
-                distance = 38;
+            case Sensor.TYPE_STEP_COUNTER:
+                steps = ((int) event.values[0]) - steps;
+                if (INITROUND) {
+                    distance = 0;
+                    INITROUND = false;
+                } else {
+                    distance = steps * STEP_SIZE * PPM;
+
+                    System.out.println(steps + "steps");
+                }
                 break;
-            }
-            // LEFT BUTTON
-            case R.id.button2: {
-                Toast.makeText(getApplication(), "LEFT", Toast.LENGTH_SHORT).show();
-                Rect r = drawable.getBounds();
-                drawable.setBounds(r.left-20,r.top,r.right-20,r.bottom);
-                textView.setText("\n\tMove Left" + "\n\tLeft Margin = "
-                        + drawable.getBounds().left);
-                direction = 270;
-                distance = 38;
-                break;
-            }
-            // RIGHT BUTTON
-            case R.id.button3: {
-                Toast.makeText(getApplication(), "RIGHT", Toast.LENGTH_SHORT).show();
-                Rect r = drawable.getBounds();
-                drawable.setBounds(r.left+20,r.top,r.right+20,r.bottom);
-                textView.setText("\n\tMove Right" + "\n\tLeft Margin = "
-                        + drawable.getBounds().left);
-                direction = 90;
-                distance = 38;
-                break;
-            }
         }
 
         updateParticles(distance, direction);
-
 
         // if there is a collision between the dot and any of the walls
         if(isCollision()) {
@@ -378,16 +350,14 @@ public class MainActivity extends Activity implements OnClickListener {
             int height = size.y;
             drawable.getPaint().setColor(Color.BLUE);
             drawable.setBounds(width/2-20, height/2-20, width/2+20, height/2+20);
-
-
         }
 
         // redrawing of the object
         canvas.drawColor(Color.WHITE);
         drawable.draw(canvas);
-        for(ShapeDrawable wall : walls)
+        for(ShapeDrawable wall : walls) {
             wall.draw(canvas);
-
+        }
 
         drawable.draw(canvas);
         for (Particle p : particles) {
@@ -399,8 +369,8 @@ public class MainActivity extends Activity implements OnClickListener {
             }
             shape.draw(canvas);
         }
-
     }
+
 
     /**
      * Determines if the drawable dot intersects with any of the walls.
