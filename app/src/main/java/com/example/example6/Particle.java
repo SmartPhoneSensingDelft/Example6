@@ -31,7 +31,7 @@ public class Particle {
         this.distance += distance;
         this.rotation = rotation;
         double radians = Math.toRadians(rotation);
-        System.out.println("Calculated Radians: " + radians + ", used rotation " + rotation);
+//        System.out.println("Calculated Radians: " + radians + ", used rotation " + rotation);
         this.y -= distance * Math.cos(radians);
         this.x += distance * Math.sin(radians);
     }

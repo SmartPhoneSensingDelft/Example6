@@ -2,8 +2,10 @@ package com.example.example6;
 
 import static java.lang.System.exit;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -25,6 +27,9 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.core.content.ContextCompat;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -46,7 +51,7 @@ public class MainActivity extends Activity implements OnClickListener, SensorEve
     private List<Particle> particles = new ArrayList<>();
     private List<Rectangle> building = new ArrayList<>();
 
-    private final int NUM_PART = 5000;
+    private final int NUM_PART = 100;
     private final double H = 2;
 
     private float ROTATION_OFFSET = 0;      // the buildings standard rotational offset
@@ -63,6 +68,12 @@ public class MainActivity extends Activity implements OnClickListener, SensorEve
 
         // initialize sensormanager
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+
+        if(ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_DENIED){
+            //ask for permission
+            requestPermissions(new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 0);
+        }
 
         // get the screen dimensions
         Display display = getWindowManager().getDefaultDisplay();
@@ -241,14 +252,14 @@ public class MainActivity extends Activity implements OnClickListener, SensorEve
                     break;
                 }
             }
-            System.out.println("Found fitting kernel value: " + kernel);
+//            System.out.println("Found fitting kernel value: " + kernel);
 
             //apply Gaussian to set point nearby, using h as std dev and kernel X and Y as mean
             //idea used from: https://stats.stackexchange.com/questions/43674/simple-sampling-method-for-a-kernel-density-estimator
             double minX = Math.random();
             double minY = Math.random();
 
-            System.out.println("sample to check from: " + particles.get(kernel).getX() + ", "+ particles.get(kernel).getY());
+//            System.out.println("sample to check from: " + particles.get(kernel).getX() + ", "+ particles.get(kernel).getY());
             double newX = particles.get(kernel).getX() + Math.random() * H;
             double newY = particles.get(kernel).getY() + Math.random() * H;
             if (minX < 0.5) {
@@ -258,12 +269,12 @@ public class MainActivity extends Activity implements OnClickListener, SensorEve
                 newY = particles.get(kernel).getY() - Math.random() * H;
             }
 
-            System.out.println("new particle values X " + newX + ", and Y " + newY);
+//            System.out.println("new particle values X " + newX + ", and Y " + newY);
 
             Particle newP = new Particle(newX, newY, 1, Math.random()*360);
             if (validParticle(newP)) {
                 particles.add(newP);
-                System.out.println("new Particle added");
+//                System.out.println("new Particle added");
             }
         }
 
